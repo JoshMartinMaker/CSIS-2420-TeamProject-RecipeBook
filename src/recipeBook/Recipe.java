@@ -1,5 +1,6 @@
 package recipeBook;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
@@ -9,8 +10,9 @@ import java.util.Arrays;
  * @author Josh Martin
  *
  */
-public class Recipe implements Comparable<Recipe> {
+public class Recipe implements Comparable<Recipe>, Serializable {
 	
+	private static final long serialVersionUID = -8199914184162458471L;
 	private final String name;					// The name of this recipe
 	private final Ingredient[] ingredients;		// The ingredients this recipe requires
 	private final String[] instructions;		// The instructions to make this recipe

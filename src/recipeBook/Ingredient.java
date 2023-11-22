@@ -1,13 +1,16 @@
 package recipeBook;
 
+import java.io.Serializable;
+
 /**
  * Represents an ingredient in a {@link Recipe}.
  * 
  * @author Josh Martin
  *
  */
-public class Ingredient implements Comparable<Ingredient> {
+public class Ingredient implements Comparable<Ingredient>, Serializable {
 
+	private static final long serialVersionUID = 6272702650066621682L;
 	private final String quantityAndUnits;		// The quantity of this ingredient with its units
 	private final String name;					// The name of this ingredient
 	
