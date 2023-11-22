@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.Arrays;
 import edu.princeton.cs.algs4.Edge;
 import edu.princeton.cs.algs4.EdgeWeightedGraph;
 import edu.princeton.cs.algs4.MinPQ;
@@ -231,36 +230,38 @@ public class RecipeBook {
 			return -1.0;
 		}
 		
-		Ingredient[] recipe1Ingredients = recipe1.getIngredients();
-		Ingredient[] recipe2Ingredients = recipe2.getIngredients();
+		RedBlackBST<String, Integer> recipe1Ingredients = new RedBlackBST<>();
+		String currentIngredient = null;
 		int sharedIngredients = 0;
-		int smallestIngredientList = 0;
+		int largestIngredientList = Math.max(recipe1.getIngredients().length, recipe2.getIngredients().length);
 		double averageSharedIngredients = 0;
-		boolean allIngredientsShared = false;
-		int ingredientLengthDifference = 0;
 		
-		if (Arrays.compare(recipe1Ingredients, recipe2Ingredients) == 0) {
-			return 1;
+		for (Ingredient el : recipe1.getIngredients()) {
+			recipe1Ingredients.put(el.getName(), 1);
 		}
 		
-		smallestIngredientList = Math.min(recipe1Ingredients.length, recipe2Ingredients.length);
-		
-		for (int i = 0; i < smallestIngredientList; i++) {
-			if (recipe1Ingredients[i].compareTo(recipe2Ingredients[i]) == 0) {
+		for (Ingredient el : recipe2.getIngredients()) {
+			
+			currentIngredient = el.getName();
+			
+			if (recipe1Ingredients.contains(currentIngredient)) {
 				sharedIngredients++;
 			}
 		}
 		
-		averageSharedIngredients = sharedIngredients/smallestIngredientList;
-		allIngredientsShared = sharedIngredients == smallestIngredientList;
+		averageSharedIngredients = ((double) sharedIngredients)/largestIngredientList;
 		
-		ingredientLengthDifference = Math.abs(recipe1Ingredients.length - recipe2Ingredients.length);
-		
-		if (allIngredientsShared && (ingredientLengthDifference <= 2)) {
+		if (sharedIngredients == largestIngredientList) {
 			return 1;
 		}
-		else {
-			return averageSharedIngredients/ingredientLengthDifference;
+		else if (largestIngredientList <= 4) {			// Small recipes
+			return Math.min(0.95, 1.5*averageSharedIngredients);
+		}
+		else if (largestIngredientList <= 6){		// Medium recipes
+			return Math.min(0.95, 1.25*averageSharedIngredients);
+		}
+		else {										// Large recipes
+			return averageSharedIngredients;
 		}
 	}
 	
@@ -548,7 +549,7 @@ public class RecipeBook {
 		System.out.println();
 		
 		System.out.println("Adding notSimilarRecipe");
-		System.out.println("Expected: (0-4 0.0) (0-6 1.0) (4-6 0.0) [in any order]");
+		System.out.println("Expected: (0-4 0.625) (0-6 1.0) (4-6 0.625) [in any order]");
 		System.out.print("Actual: ");
 		
 		for (Edge el : notSimilarRecipeBook.ingredientSimilarity.edges()) {
@@ -561,8 +562,19 @@ public class RecipeBook {
 		
 		printHeader("getSimilarRecipeScores Method");
 		
+		System.out.println("getSimilarRecipeScores(recipe1) in similarRecipeBook");
+		System.out.println("Expected: (1.0) (1.0)");
+		System.out.print("Actual: ");
+		
+		for (Double el : similarRecipeBook.getSimilarRecipeScores(recipe1)) {
+			System.out.print("(" + el + ") ");
+		}
+		
+		System.out.println();
+		System.out.println();
+		
 		System.out.println("getSimilarRecipeScores(recipe1) in notSimilarRecipeBook");
-		System.out.println("Expected: (1.0) (0.0)");
+		System.out.println("Expected: (1.0) (0.625)");
 		System.out.print("Actual: ");
 		
 		for (Double el : notSimilarRecipeBook.getSimilarRecipeScores(recipe1)) {
