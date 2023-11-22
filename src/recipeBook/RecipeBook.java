@@ -1,5 +1,13 @@
 package recipeBook;
 
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import edu.princeton.cs.algs4.Edge;
 import edu.princeton.cs.algs4.EdgeWeightedGraph;
@@ -281,21 +289,74 @@ public class RecipeBook {
 		return similarityScores;
 	}
 	
-//	/**
-//	 * Saves this {@code RecipeBook} to a file.
-//	 */
-//	public void saveRecipeBookToFile() {
-//		//TODO
-//	}
-//	
-//	/**
-//	 * Reads a {@code RecipeBook} from a file.
-//	 * 
-//	 * @return The {@code RecipeBook} read from a file.
-//	 */
-//	public RecipeBook readRecipeBookFromFile() {
-//		return null;	// TODO
-//	}
+	/**
+	 * Saves this {@code RecipeBook} to the file
+	 * {@code src/recipeBook/BinaryFiles/RecipeBook.ser}.
+	 */
+	public void saveRecipeBookToFile() {
+		
+		File fileName = new File("src/recipeBook/BinaryFiles/RecipeBook.ser");
+		
+		try (ObjectOutputStream serializer
+				= new ObjectOutputStream(new FileOutputStream(fileName))) {
+			
+			for (Recipe currentRecipe : this.getAllRecipes()) {
+				serializer.writeObject(currentRecipe);
+			}
+		}
+		catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Reads a {@code RecipeBook} from the file
+	 * {@code src/recipeBook/BinaryFiles/RecipeBook.ser}.
+	 * 
+	 * @return The {@code RecipeBook} read from the file
+	 *         {@code src/recipeBook/BinaryFiles/RecipeBook.ser}.
+	 */
+	public static RecipeBook readRecipeBookFromFile() {
+		
+		File fileName = new File("src/recipeBook/BinaryFiles/RecipeBook.ser");
+		Queue<Recipe> recipes = new Queue<>();
+		RecipeBook result = null;
+		
+		// Read Recipes from file
+		try (ObjectInputStream deserializer
+				= new ObjectInputStream(new FileInputStream(fileName))) {
+			
+			for (Recipe currentRecipe = (Recipe) deserializer.readObject();
+					currentRecipe != null;
+					currentRecipe = (Recipe) deserializer.readObject()) {
+				recipes.enqueue(currentRecipe);
+			}
+		}
+		catch (EOFException e) {
+			
+		}
+		catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+		catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Recipes to new RecipeBook
+		result = new RecipeBook();
+		
+		for (Recipe el : recipes) {
+			result.addRecipe(el);
+		}
+		
+		return result;
+	}
 	
 	/**
 	 * Test client for {@link RecipeBook} class.
@@ -303,6 +364,13 @@ public class RecipeBook {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		
+//		RecipeBook readFromFile = readRecipeBookFromFile();
+//		
+//		for (Recipe el : readFromFile.getAllRecipes()) {
+//			System.out.println(el);
+//		}
+		
 		@SuppressWarnings("unused")
 		RecipeBook recipeBook100 = new RecipeBook();
 		RecipeBook recipeBook50 = new RecipeBook(50);
@@ -428,6 +496,8 @@ public class RecipeBook {
 		System.out.println();
 		System.out.println();
 		System.out.println();
+		
+//		recipeBook50.saveRecipeBookToFile();
 	}
 	
 	/**
