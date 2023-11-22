@@ -205,11 +205,23 @@ public class RecipeBook {
 	}
 	
 	/**
-	 * Calculates the similarity score of two recipes.
+	 * Calculates the similarity score of two recipes. The similarity score is
+	 * calculated based on the number of ingredients shared by the recipes and the
+	 * difference between their number of ingredients.
+	 * <p>
+	 * If all ingredients of one recipe are also in the other, their similarity
+	 * score is 1 if there are at most two additional ingredients in the other
+	 * recipe. For example, suppose recipe A has 3 ingredients, recipe B has 5
+	 * ingredients, and recipe B contains all ingredients in recipe A. The
+	 * similarity score between A and B is 1 because the difference in their
+	 * ingredient number is 2 (5 - 3). If recipe B had one additional ingredient (6
+	 * total), its similarity score would be less than 1 because the difference is
+	 * greater than 2 (6 - 3).
 	 * 
 	 * @param recipe1 The first recipe.
 	 * @param recipe2 The second recipe.
-	 * @return The similarity score of {@code recipe1} to {@code recipe2}.
+	 * @return The similarity score of {@code recipe1} to {@code recipe2},
+	 *         represented by a double in the interval [0, 1].
 	 */
 	private double calculateSimilarityScore(Recipe recipe1, Recipe recipe2) {
 		
@@ -217,16 +229,35 @@ public class RecipeBook {
 			return -1.0;
 		}
 		
-		if (Arrays.compare(recipe1.getIngredients(), recipe2.getIngredients()) == 0) {
+		Ingredient[] recipe1Ingredients = recipe1.getIngredients();
+		Ingredient[] recipe2Ingredients = recipe2.getIngredients();
+		
+		if (Arrays.compare(recipe1Ingredients, recipe2Ingredients) == 0) {
 			return 1;
 		}
 		
-		// TODO
-		// ratio between number of ingredients multiplied by percentage of shared ingredients?
+		int sharedIngredients = 0;
+		int smallestIngredientList = Math.min(recipe1Ingredients.length, recipe2Ingredients.length);
 		
-		return 0;
+		for (int i = 0; i < smallestIngredientList; i++) {
+			if (recipe1Ingredients[i].compareTo(recipe2Ingredients[i]) == 0) {
+				sharedIngredients++;
+			}
+		}
+		
+		double averageSharedIngredients = sharedIngredients/smallestIngredientList;
+		boolean allIngredientsShared = averageSharedIngredients == smallestIngredientList;
+		
+		int ingredientLengthDifference = Math.abs(recipe1Ingredients.length - recipe2Ingredients.length);
+		
+		if (allIngredientsShared && (ingredientLengthDifference <= 2)) {
+			return 1;
+		}
+		else {
+			return averageSharedIngredients/ingredientLengthDifference;
+		}
 	}
-
+	
 	/**
 	 * Returns the most similar recipes to {@code referenceRecipe}.
 	 * 
@@ -336,7 +367,7 @@ public class RecipeBook {
 			}
 		}
 		catch (EOFException e) {
-			
+			// All Recipes have been read
 		}
 		catch (FileNotFoundException e) {
 			e.printStackTrace();
