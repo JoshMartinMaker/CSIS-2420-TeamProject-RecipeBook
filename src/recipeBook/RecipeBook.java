@@ -8,11 +8,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.Arrays;
 import edu.princeton.cs.algs4.Edge;
 import edu.princeton.cs.algs4.EdgeWeightedGraph;
+import edu.princeton.cs.algs4.MinPQ;
 import edu.princeton.cs.algs4.Queue;
 import edu.princeton.cs.algs4.RedBlackBST;
+import edu.princeton.cs.algs4.Stack;
 
 /**
  * Represents a group of {@link Recipe}s.
@@ -190,7 +191,7 @@ public class RecipeBook {
 		// Add new edges to graph
 		for (Double similarityScore : similarityScores.keys()) {
 
-			if (similarityScore >= 0) {
+			if (similarityScore > 0) {
 				
 				Queue<Integer> currentSimilarVertices = similarityScores.get(similarityScore);
 
@@ -229,32 +230,38 @@ public class RecipeBook {
 			return -1.0;
 		}
 		
-		Ingredient[] recipe1Ingredients = recipe1.getIngredients();
-		Ingredient[] recipe2Ingredients = recipe2.getIngredients();
+		RedBlackBST<String, Integer> recipe1Ingredients = new RedBlackBST<>();
+		String currentIngredient = null;
+		int sharedIngredients = 0;
+		int largestIngredientList = Math.max(recipe1.getIngredients().length, recipe2.getIngredients().length);
+		double averageSharedIngredients = 0;
 		
-		if (Arrays.compare(recipe1Ingredients, recipe2Ingredients) == 0) {
-			return 1;
+		for (Ingredient el : recipe1.getIngredients()) {
+			recipe1Ingredients.put(el.getName(), 1);
 		}
 		
-		int sharedIngredients = 0;
-		int smallestIngredientList = Math.min(recipe1Ingredients.length, recipe2Ingredients.length);
-		
-		for (int i = 0; i < smallestIngredientList; i++) {
-			if (recipe1Ingredients[i].compareTo(recipe2Ingredients[i]) == 0) {
+		for (Ingredient el : recipe2.getIngredients()) {
+			
+			currentIngredient = el.getName();
+			
+			if (recipe1Ingredients.contains(currentIngredient)) {
 				sharedIngredients++;
 			}
 		}
 		
-		double averageSharedIngredients = sharedIngredients/smallestIngredientList;
-		boolean allIngredientsShared = averageSharedIngredients == smallestIngredientList;
+		averageSharedIngredients = ((double) sharedIngredients)/largestIngredientList;
 		
-		int ingredientLengthDifference = Math.abs(recipe1Ingredients.length - recipe2Ingredients.length);
-		
-		if (allIngredientsShared && (ingredientLengthDifference <= 2)) {
+		if (sharedIngredients == largestIngredientList) {
 			return 1;
 		}
-		else {
-			return averageSharedIngredients/ingredientLengthDifference;
+		else if (largestIngredientList <= 4) {			// Small recipes
+			return Math.min(0.95, 1.5*averageSharedIngredients);
+		}
+		else if (largestIngredientList <= 6){		// Medium recipes
+			return Math.min(0.95, 1.25*averageSharedIngredients);
+		}
+		else {										// Large recipes
+			return averageSharedIngredients;
 		}
 	}
 	
@@ -264,27 +271,22 @@ public class RecipeBook {
 	 * @param referenceRecipe The recipe that returned recipes should be similar to.
 	 * @return An {@code Iterable} containing the most similar {@code Recipe}s to
 	 *         {@code referenceRecipe}.
-	 * @implNote The number of recipes returned is dictated by
+	 * @implNote The number of recipes returned is dictated by the constant
 	 *           {@code MAX_SIMILAR_RECIPES}.
 	 */
 	public Iterable<Recipe> getSimilarRecipes(Recipe referenceRecipe) {
-		
+
 		Queue<Recipe> similarRecipes = new Queue<>();
 		int referenceVertex = referenceRecipe.getNumber();
-		int otherVertex = 0;
+		Recipe currentRecipe = null;
+		int currentRecipeVertex = 0;
 		
-		// TODO Return similar recipes in order
-		
-		// TODO Current implementation returns all edges connected to referenceRecipe,
-		// which may be greater than MAX_SIMILAR_RECIPES. Change to be similar to
-		// addRecipeToSimilarityGraph and only enqueue MAX_SIMILAR_RECIPES Recipes.
-		
-		
-		// For each similar Recipe
-		for (Edge el : ingredientSimilarity.adj(referenceVertex)) {
+		for (Edge el : getMaxSimilarRecipeEdges(referenceRecipe)) {
 			
-			otherVertex = el.other(referenceVertex);
-			similarRecipes.enqueue(recipesByNumber.get(otherVertex));
+			currentRecipeVertex = el.other(referenceVertex);
+			currentRecipe = recipesByNumber.get(currentRecipeVertex);
+			
+			similarRecipes.enqueue(currentRecipe);
 		}
 		
 		return similarRecipes;
@@ -298,26 +300,70 @@ public class RecipeBook {
 	 *                        referenced to.
 	 * @return An {@code Iterable} containing the similarity scores of the most
 	 *         similar recipes to {@code referenceRecipe}.
-	 * @implNote The number of similarity scores returned is dictated by
-	 *           {@code MAX_SIMILAR_RECIPES}.
+	 * @implNote The number of similarity scores returned is dictated by the
+	 *           constant {@code MAX_SIMILAR_RECIPES}.
 	 */
 	public Iterable<Double> getSimilarRecipeScores(Recipe referenceRecipe) {
 		
-		Queue<Double> similarityScores = new Queue<>();
+		Queue<Double> similarRecipeScores = new Queue<>();
+		double currentWeight = 0;
 		
-		// TODO Return similar scores in order
-		
-		// TODO Current implementation returns all edges connected to referenceRecipe,
-		// which may be greater than MAX_SIMILAR_RECIPES. Change to be similar to
-		// addRecipeToSimilarityGraph and only enqueue MAX_SIMILAR_RECIPES Recipes.
-		
-		
-		// For each similar Recipe
-		for (Edge el : ingredientSimilarity.adj(referenceRecipe.getNumber())) {
-			similarityScores.enqueue(el.weight());
+		for (Edge el : getMaxSimilarRecipeEdges(referenceRecipe)) {
+			
+			currentWeight = el.weight();
+			similarRecipeScores.enqueue(currentWeight);
 		}
 		
-		return similarityScores;
+		return similarRecipeScores;
+	}
+
+	/**
+	 * Returns the edges of {@code ingredientSimilarity} with the largest similarity
+	 * scores to {@code referenceRecipe}.
+	 * 
+	 * @param referenceRecipe The recipe that returned edges should be connected to.
+	 * @return An {@code Iterable} containing the edges of
+	 *         {@code ingredientSimilarity} connected to {@code referenceRecipe}
+	 *         with the largest similarity score.
+	 * @implNote The number of edges returned is dictated by the constant
+	 *           {@code MAX_SIMILAR_RECIPES}.
+	 */
+	private Iterable<Edge> getMaxSimilarRecipeEdges(Recipe referenceRecipe) {
+
+		int referenceVertex = referenceRecipe.getNumber();
+		MinPQ<Edge> similarRecipeEdges = new MinPQ<>(MAX_SIMILAR_RECIPES);
+		Edge smallestSimilarityRecipe = null;
+		Stack<Edge> result = new Stack<>();
+		double currentWeight = 0;
+		
+		for (int i = 1; i <= MAX_SIMILAR_RECIPES; i++) {
+			similarRecipeEdges.insert(new Edge(0, 0, -1));
+		}
+		
+		smallestSimilarityRecipe = similarRecipeEdges.min();
+		
+		// For each similar recipe Edge
+		for (Edge el : ingredientSimilarity.adj(referenceVertex)) {
+			
+			if (smallestSimilarityRecipe.compareTo(el) < 0) {
+				
+				similarRecipeEdges.delMin();
+				similarRecipeEdges.insert(el);
+				smallestSimilarityRecipe = similarRecipeEdges.min();
+			}
+		}
+		
+		// Reverse order of similarRecipeEdges and ignore null edges
+		for (Edge el : similarRecipeEdges) {
+			
+			currentWeight = el.weight();
+			
+			if (currentWeight > 0) {
+				result.push(el);
+			}
+		}
+		
+		return result;
 	}
 	
 	/**
@@ -414,8 +460,8 @@ public class RecipeBook {
 			instructions1[i] = "step " + (i + 1);
 		}
 		
-		String[] ingredients2 = new String[5];
-		String[] instructions2 = new String[5];
+		String[] ingredients2 = new String[6];
+		String[] instructions2 = new String[6];
 		
 		for (int i = 0; i < ingredients2.length; i++) {
 			ingredients2[i] = "qty " + (i + 1) + " units " + (i + 1) + "::name " + (i + 1);
@@ -503,7 +549,7 @@ public class RecipeBook {
 		System.out.println();
 		
 		System.out.println("Adding notSimilarRecipe");
-		System.out.println("Expected: (0-4 0.0) (0-6 1.0) (4-6 0.0) [in any order]");
+		System.out.println("Expected: (0-4 0.625) (0-6 1.0) (4-6 0.625) [in any order]");
 		System.out.print("Actual: ");
 		
 		for (Edge el : notSimilarRecipeBook.ingredientSimilarity.edges()) {
@@ -516,8 +562,19 @@ public class RecipeBook {
 		
 		printHeader("getSimilarRecipeScores Method");
 		
+		System.out.println("getSimilarRecipeScores(recipe1) in similarRecipeBook");
+		System.out.println("Expected: (1.0) (1.0)");
+		System.out.print("Actual: ");
+		
+		for (Double el : similarRecipeBook.getSimilarRecipeScores(recipe1)) {
+			System.out.print("(" + el + ") ");
+		}
+		
+		System.out.println();
+		System.out.println();
+		
 		System.out.println("getSimilarRecipeScores(recipe1) in notSimilarRecipeBook");
-		System.out.println("Expected: (1.0) (0.0)");
+		System.out.println("Expected: (1.0) (0.625)");
 		System.out.print("Actual: ");
 		
 		for (Double el : notSimilarRecipeBook.getSimilarRecipeScores(recipe1)) {
