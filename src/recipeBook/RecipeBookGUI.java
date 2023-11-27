@@ -51,7 +51,7 @@ public class RecipeBookGUI extends JFrame {
 	private Recipe newRecipe2;
 
 	/**
-	 * Launch the application.
+	 * Launch the application. I have no idea :)
 	 */
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
